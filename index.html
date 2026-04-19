@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D View</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+    canvas { display: block; }
+
+    #video {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      width: 140px;
+      border-radius: 8px;
+      opacity: 0.4;
+      transform: scaleX(-1); /* mirror so it feels natural */
+      z-index: 10;
+    }
+
+    #status {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      color: #0f0;
+      font-size: 13px;
+      z-index: 10;
+      text-shadow: 0 0 8px #0f0;
+    }
+
+    #hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #555;
+      font-size: 13px;
+      z-index: 10;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay muted playsinline></video>
+  <div id="status">Requesting camera...</div>
+  <div id="hint">Move your head to explore the 3D space</div>
+
+  <!-- Three.js -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+  <!-- MediaPipe Face Detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
+
+  <script>
+    // ── Three.js scene ──────────────────────────────────────────────────────
+    const scene    = new THREE.Scene();
+    scene.fog      = new THREE.FogExp2(0x000000, 0.04);
+
+    const cam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
+    cam.position.set(0, 3, 12);
+    cam.lookAt(0, 0, 0);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(devicePixelRatio);
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Floor grid
+    const floorGrid = new THREE.GridHelper(40, 40, 0x00ff88, 0x003322);
+    scene.add(floorGrid);
+
+    // Ceiling grid
+    const ceilGrid = new THREE.GridHelper(40, 40, 0x0088ff, 0x002233);
+    ceilGrid.position.y = 6;
+    scene.add(ceilGrid);
+
+    // Side walls (rotated grids)
+    const wallMat = new THREE.LineBasicMaterial({ color: 0x004488 });
+
+    function makeWallGrid(rotZ, x) {
+      const g = new THREE.GridHelper(40, 20, 0x0044aa, 0x001133);
+      g.rotation.z = rotZ;
+      g.position.x = x;
+      g.position.y = 3;
+      scene.add(g);
+    }
+    makeWallGrid(Math.PI / 2,  20);
+    makeWallGrid(Math.PI / 2, -20);
+
+    // Central floating box
+    const boxGeo  = new THREE.BoxGeometry(4, 4, 4);
+    const boxEdge = new THREE.EdgesGeometry(boxGeo);
+    const boxLine = new THREE.LineSegments(
+      boxEdge,
+      new THREE.LineBasicMaterial({ color: 0x00ffff })
+    );
+    boxLine.position.y = 3;
+    scene.add(boxLine);
+
+    // Inner box (gives a nested depth feel)
+    const innerEdge = new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2));
+    const innerLine = new THREE.LineSegments(
+      innerEdge,
+      new THREE.LineBasicMaterial({ color: 0xff44ff })
+    );
+    innerLine.position.y = 3;
+    scene.add(innerLine);
+
+    // Ambient dots / particles
+    const ptGeo  = new THREE.BufferGeometry();
+    const ptCount = 300;
+    const ptPos  = new Float32Array(ptCount * 3);
+    for (let i = 0; i < ptCount; i++) {
+      ptPos[i * 3]     = (Math.random() - 0.5) * 60;
+      ptPos[i * 3 + 1] = Math.random() * 10;
+      ptPos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    }
+    ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos, 3));
+    const pts = new THREE.Points(ptGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08 }));
+    scene.add(pts);
+
+    // ── Head tracking state ─────────────────────────────────────────────────
+    // targetX/Y: where we want the camera offset to go (-1..1)
+    let targetX = 0, targetY = 0;
+    let smoothX = 0, smoothY = 0;
+
+    // ── MediaPipe Face Detection ────────────────────────────────────────────
+    const videoEl  = document.getElementById('video');
+    const statusEl = document.getElementById('status');
+
+    const faceDetector = new FaceDetection({
+      locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
+    });
+
+    faceDetector.setOptions({
+      model: 'short',               // fast short-range model
+      minDetectionConfidence: 0.5
+    });
+
+    faceDetector.onResults(results => {
+      if (results.detections.length > 0) {
+        const box = results.detections[0].boundingBox;
+        // xCenter / yCenter are 0–1 (normalised to video frame)
+        // Camera feed is mirrored visually, so flip X so movement feels natural
+        targetX = (box.xCenter - 0.5) * -2;   // left/right  (-1 to +1)
+        targetY = (box.yCenter - 0.5) * -1.5;  // up/down
+        statusEl.textContent = '● Tracking';
+      } else {
+        statusEl.textContent = '○ No face detected';
+      }
+    });
+
+    const mpCam = new Camera(videoEl, {
+      onFrame: async () => { await faceDetector.send({ image: videoEl }); },
+      width: 640, height: 480
+    });
+
+    mpCam.start()
+      .then(() => { statusEl.textContent = '○ Looking for face...'; })
+      .catch(err => { statusEl.textContent = 'Camera error: ' + err.message; });
+
+    // ── Render loop ─────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      // Smooth camera offset (lerp toward target)
+      smoothX += (targetX - smoothX) * 0.08;
+      smoothY += (targetY - smoothY) * 0.08;
+
+      // Parallax: shift camera position while keeping it looking at origin
+      // Larger multiplier = more dramatic effect
+      cam.position.x = smoothX * 5;
+      cam.position.y = 3 + smoothY * 3;
+      cam.lookAt(0, 2, 0);
+
+      // Slow auto-rotate the boxes
+      boxLine.rotation.y  = t * 0.3;
+      innerLine.rotation.y = -t * 0.5;
+      innerLine.rotation.x =  t * 0.2;
+
+      renderer.render(scene, cam);
+    }
+    animate();
+
+    // ── Resize ──────────────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      cam.aspect = innerWidth / innerHeight;
+      cam.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
+</body>
+</html>

@@ -215,6 +215,18 @@
       scene.add(seg([ hw,y,zN],[ hw,y,zF],dimMat));
     }
 
+    // ── Stars ─────────────────────────────────────────────────────────────────
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 400;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      starPos[i * 3]     = (Math.random() - 0.5) * 60;
+      starPos[i * 3 + 1] = (Math.random() - 0.5) * 40;
+      starPos[i * 3 + 2] = -Math.random() * 90 - 2;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.07 })));
+
     // ── Lights ────────────────────────────────────────────────────────────────
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
@@ -337,7 +349,7 @@
 
     // ── Render loop ───────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
-    const SMOOTH = 0.18;   // lerp factor — raise toward 1 for less smoothing
+    const SMOOTH = 0.09;   // lerp factor — raise toward 1 for less smoothing
     let frameCount = 0;
 
     function animate() {

@@ -6,125 +6,283 @@
   <title>3D View</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; font-family: monospace; }
+    body { background: #000; overflow: hidden; font-family: monospace; color: #fff; }
     canvas { display: block; }
+
     #video {
       position: fixed; top: 12px; right: 12px;
-      width: 140px; border-radius: 8px; opacity: 0.4;
+      width: 130px; border-radius: 8px; opacity: 0.35;
       transform: scaleX(-1); z-index: 10;
     }
     #status {
       position: fixed; top: 12px; left: 12px;
-      color: #0f0; font-size: 13px; z-index: 10;
+      color: #0f0; font-size: 12px; z-index: 10;
       text-shadow: 0 0 8px #0f0;
     }
+
+    /* ── Settings button ── */
+    #settings-btn {
+      position: fixed; bottom: 20px; right: 20px;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff; font-size: 18px; cursor: pointer;
+      z-index: 20; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: blur(6px); transition: background 0.2s;
+    }
+    #settings-btn:hover { background: rgba(255,255,255,0.18); }
+
+    /* ── Settings panel ── */
+    #settings {
+      position: fixed; right: -300px; top: 0; bottom: 0;
+      width: 270px; padding: 24px 20px;
+      background: rgba(0,0,0,0.88);
+      border-left: 1px solid rgba(255,255,255,0.09);
+      backdrop-filter: blur(14px);
+      z-index: 15; overflow-y: auto;
+      transition: right 0.3s cubic-bezier(.4,0,.2,1);
+    }
+    #settings.open { right: 0; }
+    #settings h2 { font-size: 11px; color: #0f0; margin-bottom: 22px; letter-spacing: 3px; }
+
+    .section-title {
+      font-size: 9px; color: #444; letter-spacing: 2px;
+      text-transform: uppercase;
+      border-top: 1px solid #1a1a1a; padding-top: 14px; margin: 18px 0 12px;
+    }
+    .setting { margin-bottom: 16px; }
+    .setting label {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: #888; margin-bottom: 7px;
+    }
+    .setting label span { color: #0f0; min-width: 30px; text-align: right; }
+    input[type=range] {
+      width: 100%; height: 2px; appearance: none;
+      background: #222; border-radius: 2px; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none; width: 13px; height: 13px;
+      border-radius: 50%; background: #0f0; cursor: pointer;
+    }
+
     #hint {
       position: fixed; bottom: 20px; left: 50%;
       transform: translateX(-50%);
-      color: #444; font-size: 13px; z-index: 10;
+      color: #333; font-size: 12px; z-index: 10;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
   <video id="video" autoplay muted playsinline></video>
   <div id="status">Requesting camera...</div>
-  <div id="hint">Move your head — look around the box</div>
+  <div id="hint">Move your head — tilt, shift, lean in/out</div>
+  <button id="settings-btn" title="Settings">⚙</button>
+
+  <div id="settings">
+    <h2>⚙ SETTINGS</h2>
+
+    <div class="section-title">Head Tracking</div>
+
+    <div class="setting">
+      <label>Horizontal sensitivity <span id="hSensVal">6</span></label>
+      <input type="range" id="hSens" min="1" max="15" step="0.5" value="6">
+    </div>
+    <div class="setting">
+      <label>Vertical sensitivity <span id="vSensVal">4</span></label>
+      <input type="range" id="vSens" min="1" max="10" step="0.5" value="4">
+    </div>
+    <div class="setting">
+      <label>Depth / zoom <span id="dSensVal">30</span></label>
+      <input type="range" id="dSens" min="0" max="80" step="1" value="30">
+    </div>
+
+    <div class="section-title">Scene</div>
+
+    <div class="setting">
+      <label>Field of view <span id="fovVal">70</span></label>
+      <input type="range" id="fov" min="40" max="110" step="1" value="70">
+    </div>
+    <div class="setting">
+      <label>Fog density <span id="fogVal">0.018</span></label>
+      <input type="range" id="fog" min="0" max="0.07" step="0.001" value="0.018">
+    </div>
+
+    <div class="section-title">Reflective Object</div>
+
+    <div class="setting">
+      <label>Rotation speed <span id="rotVal">0.5</span></label>
+      <input type="range" id="rot" min="0" max="3" step="0.1" value="0.5">
+    </div>
+    <div class="setting">
+      <label>Metalness <span id="metVal">1.0</span></label>
+      <input type="range" id="met" min="0" max="1" step="0.05" value="1">
+    </div>
+    <div class="setting">
+      <label>Roughness <span id="roughVal">0.0</span></label>
+      <input type="range" id="rough" min="0" max="1" step="0.05" value="0">
+    </div>
+    <div class="setting">
+      <label>Object Z position <span id="objZVal">-20</span></label>
+      <input type="range" id="objZ" min="-70" max="-5" step="1" value="-20">
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
 
   <script>
-    // ── Scene ────────────────────────────────────────────────────────────────
-    const scene = new THREE.Scene();
-    scene.fog   = new THREE.FogExp2(0x000000, 0.018);
+    // ── Live settings ─────────────────────────────────────────────────────────
+    const S = { hSens:6, vSens:4, dSens:30, fov:70, fog:0.018, rot:0.5, met:1, rough:0, objZ:-20 };
 
-    const cam = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+    document.getElementById('settings-btn').addEventListener('click', () =>
+      document.getElementById('settings').classList.toggle('open')
+    );
+
+    function bind(id, key, valId, onChange) {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        S[key] = parseFloat(el.value);
+        document.getElementById(valId).textContent = el.value;
+        onChange && onChange(S[key]);
+      });
+    }
+
+    // ── Three.js ──────────────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, S.fog);
+
+    const cam = new THREE.PerspectiveCamera(S.fov, innerWidth / innerHeight, 0.1, 300);
     cam.position.set(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(devicePixelRatio);
     renderer.setSize(innerWidth, innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     document.body.appendChild(renderer.domElement);
 
-    // ── Build the box tunnel ─────────────────────────────────────────────────
-    // A series of rectangular frames at increasing depths, connected at corners.
-    // This gives the "looking into a box" perspective-line feel.
+    // ── Box tunnel ────────────────────────────────────────────────────────────
+    const W = 10, H = 7;
+    const depths = Array.from({ length: 18 }, (_, i) => -2 - i * 5);
 
-    const W = 10, H = 7;          // frame width / height
-    const depths = [];
-    for (let z = -2; z >= -80; z -= 5) depths.push(z);
+    const cyanMat  = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7 });
+    const dimMat   = new THREE.LineBasicMaterial({ color: 0x005544, transparent: true, opacity: 0.4 });
+    const blueMat  = new THREE.LineBasicMaterial({ color: 0x2233ff, transparent: true, opacity: 0.35 });
 
-    const frameMat  = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7 });
-    const connMat   = new THREE.LineBasicMaterial({ color: 0x005544, transparent: true, opacity: 0.5 });
-    const accentMat = new THREE.LineBasicMaterial({ color: 0x0044ff, transparent: true, opacity: 0.4 });
-
-    // Helper: line between two [x,y,z] points
-    function line3(a, b, mat) {
-      const geo = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(...a), new THREE.Vector3(...b)
-      ]);
-      return new THREE.Line(geo, mat);
+    function seg(a, b, mat) {
+      return new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a), new THREE.Vector3(...b)]),
+        mat
+      );
     }
 
-    // Helper: rectangular frame at depth z
     function addFrame(z, mat) {
-      const hw = W / 2, hh = H / 2;
-      const corners = [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z],[-hw,-hh,z]];
-      const geo = new THREE.BufferGeometry().setFromPoints(
-        corners.map(p => new THREE.Vector3(...p))
-      );
-      scene.add(new THREE.Line(geo, mat));
+      const hw = W/2, hh = H/2;
+      const pts = [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z],[-hw,-hh,z]];
+      scene.add(new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))),
+        mat
+      ));
       return [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z]];
     }
 
-    // Add cross-dividers inside each frame (grid lines on face)
-    function addDividers(z, mat) {
-      const hw = W / 2, hh = H / 2;
-      const cols = 4, rows = 3;
-      for (let i = 1; i < cols; i++) {
-        const x = -hw + (W / cols) * i;
-        scene.add(line3([x, -hh, z], [x, hh, z], mat));
-      }
-      for (let i = 1; i < rows; i++) {
-        const y = -hh + (H / rows) * i;
-        scene.add(line3([-hw, y, z], [hw, y, z], mat));
-      }
+    function addFaceDividers(z, mat) {
+      const hw = W/2, hh = H/2;
+      for (let i = 1; i < 4; i++) { const x = -hw + (W/4)*i; scene.add(seg([x,-hh,z],[x,hh,z],mat)); }
+      for (let i = 1; i < 3; i++) { const y = -hh + (H/3)*i; scene.add(seg([-hw,y,z],[hw,y,z],mat)); }
     }
 
-    // Build frames + connector lines
-    let prevCorners = null;
+    let prev = null;
     depths.forEach((z, i) => {
-      const isAccent = i % 3 === 0;
-      const corners = addFrame(z, isAccent ? frameMat : accentMat);
-      addDividers(z, connMat);
-
-      if (prevCorners) {
-        for (let c = 0; c < 4; c++) {
-          scene.add(line3(prevCorners[c], corners[c], connMat));
-        }
-      }
-      prevCorners = corners;
+      const corners = addFrame(z, i % 3 === 0 ? cyanMat : blueMat);
+      addFaceDividers(z, dimMat);
+      if (prev) for (let c = 0; c < 4; c++) scene.add(seg(prev[c], corners[c], dimMat));
+      prev = corners;
     });
 
-    // Floor and ceiling grid lines running into the depth
-    const hw = W / 2, hh = H / 2;
-    const zNear = -2, zFar = -80;
-    const floorCols = 5;
-    for (let i = 0; i <= floorCols; i++) {
-      const x = -hw + (W / floorCols) * i;
-      scene.add(line3([x, -hh, zNear], [x, -hh, zFar], connMat));
-      scene.add(line3([x,  hh, zNear], [x,  hh, zFar], connMat));
+    // Longitudinal lines along all edges + subdivisions
+    const hw = W/2, hh = H/2, zN = -2, zF = depths.at(-1);
+    for (let i = 0; i <= 4; i++) {
+      const x = -hw + (W/4)*i;
+      scene.add(seg([x,-hh,zN],[x,-hh,zF],dimMat));
+      scene.add(seg([x, hh,zN],[x, hh,zF],dimMat));
     }
-    const sideRows = 4;
-    for (let i = 0; i <= sideRows; i++) {
-      const y = -hh + (H / sideRows) * i;
-      scene.add(line3([-hw, y, zNear], [-hw, y, zFar], connMat));
-      scene.add(line3([ hw, y, zNear], [ hw, y, zFar], connMat));
+    for (let i = 0; i <= 3; i++) {
+      const y = -hh + (H/3)*i;
+      scene.add(seg([-hw,y,zN],[-hw,y,zF],dimMat));
+      scene.add(seg([ hw,y,zN],[ hw,y,zF],dimMat));
     }
 
+    // ── Lights (reflected by the sphere) ─────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 0.3));
+    const lights = [
+      { color: 0x00ffcc, intensity: 120, pos: [ 5,  3, -12] },
+      { color: 0x5500ff, intensity: 100, pos: [-5, -3, -28] },
+      { color: 0xff0077, intensity:  80, pos: [ 0,  4, -38] },
+      { color: 0x00aaff, intensity:  60, pos: [ 0, -5, -20] },
+    ];
+    lights.forEach(({ color, intensity, pos }) => {
+      const l = new THREE.PointLight(color, intensity, 70);
+      l.position.set(...pos);
+      scene.add(l);
+    });
+
+    // ── Reflective sphere (CubeCamera for live env reflections) ──────────────
+    const cubeRT = new THREE.WebGLCubeRenderTarget(256, {
+      generateMipmaps: true,
+      minFilter: THREE.LinearMipmapLinearFilter,
+    });
+    const cubeCamera = new THREE.CubeCamera(0.5, 150, cubeRT);
+    cubeCamera.position.set(0, 0, S.objZ);
+    scene.add(cubeCamera);
+
+    const sphereMat = new THREE.MeshStandardMaterial({
+      metalness: S.met,
+      roughness: S.rough,
+      envMap: cubeRT.texture,
+      color: 0xffffff,
+    });
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1.4, 64, 64), sphereMat);
+    sphere.position.set(0, 0, S.objZ);
+    scene.add(sphere);
+
+    // Two orbiting rings
+    function makeTorus(radius, tube, color, opacity) {
+      const m = new THREE.Mesh(
+        new THREE.TorusGeometry(radius, tube, 10, 80),
+        new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
+      );
+      m.position.set(0, 0, S.objZ);
+      scene.add(m);
+      return m;
+    }
+    const ring1 = makeTorus(2.2, 0.04, 0x00ffcc, 0.6);
+    const ring2 = makeTorus(2.7, 0.03, 0x5500ff, 0.45);
+    const ring3 = makeTorus(3.2, 0.02, 0xff0077, 0.3);
+    ring2.rotation.x = Math.PI / 3;
+    ring3.rotation.x = Math.PI / 5;
+    ring3.rotation.z = Math.PI / 4;
+
+    // ── Wire up settings ──────────────────────────────────────────────────────
+    bind('hSens', 'hSens', 'hSensVal');
+    bind('vSens', 'vSens', 'vSensVal');
+    bind('dSens', 'dSens', 'dSensVal');
+    bind('fov',   'fov',   'fovVal',   v => { cam.fov = v; cam.updateProjectionMatrix(); });
+    bind('fog',   'fog',   'fogVal',   v => { scene.fog.density = v; });
+    bind('rot',   'rot',   'rotVal');
+    bind('met',   'met',   'metVal',   v => { sphereMat.metalness = v; });
+    bind('rough', 'rough', 'roughVal', v => { sphereMat.roughness = v; });
+    bind('objZ',  'objZ',  'objZVal',  v => {
+      sphere.position.z = v;
+      cubeCamera.position.z = v;
+      [ring1, ring2, ring3].forEach(r => r.position.z = v);
+    });
+
     // ── Head tracking ─────────────────────────────────────────────────────────
-    let camX = 0, camY = 0;   // applied directly — no lag
+    let camX = 0, camY = 0, camZ = 0;
+    let refSize = null;
 
     const videoEl  = document.getElementById('video');
     const statusEl = document.getElementById('status');
@@ -137,9 +295,12 @@
     faceDetector.onResults(results => {
       if (results.detections.length > 0) {
         const box = results.detections[0].boundingBox;
-        // Flip X because selfie camera is mirrored
-        camX = (box.xCenter - 0.5) * -6;
-        camY = (box.yCenter - 0.5) * -4;
+        if (refSize === null) refSize = box.width;  // calibrate on first frame
+
+        camX = (box.xCenter - 0.5) * -S.hSens;
+        camY = (box.yCenter - 0.5) * -S.vSens;
+        camZ = (box.width - refSize) * -S.dSens;    // lean in → zoom into tunnel
+
         statusEl.textContent = '● Tracking';
       } else {
         statusEl.textContent = '○ No face detected';
@@ -148,21 +309,40 @@
 
     const mpCam = new Camera(videoEl, {
       onFrame: async () => { await faceDetector.send({ image: videoEl }); },
-      width: 320, height: 240   // lower res = faster detection = less lag
+      width: 320, height: 240
     });
     mpCam.start()
       .then(() => { statusEl.textContent = '○ Looking for face...'; })
       .catch(err => { statusEl.textContent = 'Camera error: ' + err.message; });
 
-    // ── Render loop ──────────────────────────────────────────────────────────
+    // ── Render loop ───────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+
     function animate() {
       requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
 
-      // Direct assignment — no smoothing, no lag
-      cam.position.x = camX;
-      cam.position.y = camY;
-      cam.position.z = 0;
-      cam.lookAt(0, 0, -40);   // always look toward the back of the box
+      // Camera: direct head position, no smoothing
+      cam.position.set(camX, camY, camZ);
+      cam.lookAt(0, 0, -999);
+
+      // Spin rings
+      ring1.rotation.z =  t * S.rot;
+      ring1.rotation.x =  t * S.rot * 0.3;
+      ring2.rotation.y = -t * S.rot * 0.8;
+      ring2.rotation.z =  t * S.rot * 0.2;
+      ring3.rotation.x =  t * S.rot * 0.6;
+      ring3.rotation.y = -t * S.rot * 0.4;
+
+      // Gentle float
+      const bob = Math.sin(t * 0.9) * 0.12;
+      sphere.position.y = bob;
+      cubeCamera.position.y = bob;
+
+      // Update reflections (hide sphere to avoid self-reflection artifact)
+      sphere.visible = false;
+      cubeCamera.update(renderer, scene);
+      sphere.visible = true;
 
       renderer.render(scene, cam);
     }

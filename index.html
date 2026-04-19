@@ -8,144 +8,138 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; overflow: hidden; font-family: monospace; }
     canvas { display: block; }
-
     #video {
-      position: fixed;
-      top: 12px;
-      right: 12px;
-      width: 140px;
-      border-radius: 8px;
-      opacity: 0.4;
-      transform: scaleX(-1); /* mirror so it feels natural */
-      z-index: 10;
+      position: fixed; top: 12px; right: 12px;
+      width: 140px; border-radius: 8px; opacity: 0.4;
+      transform: scaleX(-1); z-index: 10;
     }
-
     #status {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      color: #0f0;
-      font-size: 13px;
-      z-index: 10;
+      position: fixed; top: 12px; left: 12px;
+      color: #0f0; font-size: 13px; z-index: 10;
       text-shadow: 0 0 8px #0f0;
     }
-
     #hint {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
+      position: fixed; bottom: 20px; left: 50%;
       transform: translateX(-50%);
-      color: #555;
-      font-size: 13px;
-      z-index: 10;
-      text-align: center;
+      color: #444; font-size: 13px; z-index: 10;
     }
   </style>
 </head>
 <body>
   <video id="video" autoplay muted playsinline></video>
   <div id="status">Requesting camera...</div>
-  <div id="hint">Move your head to explore the 3D space</div>
+  <div id="hint">Move your head — look around the box</div>
 
-  <!-- Three.js -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-  <!-- MediaPipe Face Detection -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/face_detection.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
 
   <script>
-    // ── Three.js scene ──────────────────────────────────────────────────────
-    const scene    = new THREE.Scene();
-    scene.fog      = new THREE.FogExp2(0x000000, 0.04);
+    // ── Scene ────────────────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.fog   = new THREE.FogExp2(0x000000, 0.018);
 
-    const cam = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 200);
-    cam.position.set(0, 3, 12);
-    cam.lookAt(0, 0, 0);
+    const cam = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 300);
+    cam.position.set(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(devicePixelRatio);
     renderer.setSize(innerWidth, innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Floor grid
-    const floorGrid = new THREE.GridHelper(40, 40, 0x00ff88, 0x003322);
-    scene.add(floorGrid);
+    // ── Build the box tunnel ─────────────────────────────────────────────────
+    // A series of rectangular frames at increasing depths, connected at corners.
+    // This gives the "looking into a box" perspective-line feel.
 
-    // Ceiling grid
-    const ceilGrid = new THREE.GridHelper(40, 40, 0x0088ff, 0x002233);
-    ceilGrid.position.y = 6;
-    scene.add(ceilGrid);
+    const W = 10, H = 7;          // frame width / height
+    const depths = [];
+    for (let z = -2; z >= -80; z -= 5) depths.push(z);
 
-    // Side walls (rotated grids)
-    const wallMat = new THREE.LineBasicMaterial({ color: 0x004488 });
+    const frameMat  = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7 });
+    const connMat   = new THREE.LineBasicMaterial({ color: 0x005544, transparent: true, opacity: 0.5 });
+    const accentMat = new THREE.LineBasicMaterial({ color: 0x0044ff, transparent: true, opacity: 0.4 });
 
-    function makeWallGrid(rotZ, x) {
-      const g = new THREE.GridHelper(40, 20, 0x0044aa, 0x001133);
-      g.rotation.z = rotZ;
-      g.position.x = x;
-      g.position.y = 3;
-      scene.add(g);
+    // Helper: line between two [x,y,z] points
+    function line3(a, b, mat) {
+      const geo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(...a), new THREE.Vector3(...b)
+      ]);
+      return new THREE.Line(geo, mat);
     }
-    makeWallGrid(Math.PI / 2,  20);
-    makeWallGrid(Math.PI / 2, -20);
 
-    // Central floating box
-    const boxGeo  = new THREE.BoxGeometry(4, 4, 4);
-    const boxEdge = new THREE.EdgesGeometry(boxGeo);
-    const boxLine = new THREE.LineSegments(
-      boxEdge,
-      new THREE.LineBasicMaterial({ color: 0x00ffff })
-    );
-    boxLine.position.y = 3;
-    scene.add(boxLine);
-
-    // Inner box (gives a nested depth feel)
-    const innerEdge = new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2));
-    const innerLine = new THREE.LineSegments(
-      innerEdge,
-      new THREE.LineBasicMaterial({ color: 0xff44ff })
-    );
-    innerLine.position.y = 3;
-    scene.add(innerLine);
-
-    // Ambient dots / particles
-    const ptGeo  = new THREE.BufferGeometry();
-    const ptCount = 300;
-    const ptPos  = new Float32Array(ptCount * 3);
-    for (let i = 0; i < ptCount; i++) {
-      ptPos[i * 3]     = (Math.random() - 0.5) * 60;
-      ptPos[i * 3 + 1] = Math.random() * 10;
-      ptPos[i * 3 + 2] = (Math.random() - 0.5) * 60;
+    // Helper: rectangular frame at depth z
+    function addFrame(z, mat) {
+      const hw = W / 2, hh = H / 2;
+      const corners = [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z],[-hw,-hh,z]];
+      const geo = new THREE.BufferGeometry().setFromPoints(
+        corners.map(p => new THREE.Vector3(...p))
+      );
+      scene.add(new THREE.Line(geo, mat));
+      return [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z]];
     }
-    ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos, 3));
-    const pts = new THREE.Points(ptGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08 }));
-    scene.add(pts);
 
-    // ── Head tracking state ─────────────────────────────────────────────────
-    // targetX/Y: where we want the camera offset to go (-1..1)
-    let targetX = 0, targetY = 0;
-    let smoothX = 0, smoothY = 0;
+    // Add cross-dividers inside each frame (grid lines on face)
+    function addDividers(z, mat) {
+      const hw = W / 2, hh = H / 2;
+      const cols = 4, rows = 3;
+      for (let i = 1; i < cols; i++) {
+        const x = -hw + (W / cols) * i;
+        scene.add(line3([x, -hh, z], [x, hh, z], mat));
+      }
+      for (let i = 1; i < rows; i++) {
+        const y = -hh + (H / rows) * i;
+        scene.add(line3([-hw, y, z], [hw, y, z], mat));
+      }
+    }
 
-    // ── MediaPipe Face Detection ────────────────────────────────────────────
+    // Build frames + connector lines
+    let prevCorners = null;
+    depths.forEach((z, i) => {
+      const isAccent = i % 3 === 0;
+      const corners = addFrame(z, isAccent ? frameMat : accentMat);
+      addDividers(z, connMat);
+
+      if (prevCorners) {
+        for (let c = 0; c < 4; c++) {
+          scene.add(line3(prevCorners[c], corners[c], connMat));
+        }
+      }
+      prevCorners = corners;
+    });
+
+    // Floor and ceiling grid lines running into the depth
+    const hw = W / 2, hh = H / 2;
+    const zNear = -2, zFar = -80;
+    const floorCols = 5;
+    for (let i = 0; i <= floorCols; i++) {
+      const x = -hw + (W / floorCols) * i;
+      scene.add(line3([x, -hh, zNear], [x, -hh, zFar], connMat));
+      scene.add(line3([x,  hh, zNear], [x,  hh, zFar], connMat));
+    }
+    const sideRows = 4;
+    for (let i = 0; i <= sideRows; i++) {
+      const y = -hh + (H / sideRows) * i;
+      scene.add(line3([-hw, y, zNear], [-hw, y, zFar], connMat));
+      scene.add(line3([ hw, y, zNear], [ hw, y, zFar], connMat));
+    }
+
+    // ── Head tracking ─────────────────────────────────────────────────────────
+    let camX = 0, camY = 0;   // applied directly — no lag
+
     const videoEl  = document.getElementById('video');
     const statusEl = document.getElementById('status');
 
     const faceDetector = new FaceDetection({
       locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${f}`
     });
-
-    faceDetector.setOptions({
-      model: 'short',               // fast short-range model
-      minDetectionConfidence: 0.5
-    });
+    faceDetector.setOptions({ model: 'short', minDetectionConfidence: 0.5 });
 
     faceDetector.onResults(results => {
       if (results.detections.length > 0) {
         const box = results.detections[0].boundingBox;
-        // xCenter / yCenter are 0–1 (normalised to video frame)
-        // Camera feed is mirrored visually, so flip X so movement feels natural
-        targetX = (box.xCenter - 0.5) * -2;   // left/right  (-1 to +1)
-        targetY = (box.yCenter - 0.5) * -1.5;  // up/down
+        // Flip X because selfie camera is mirrored
+        camX = (box.xCenter - 0.5) * -6;
+        camY = (box.yCenter - 0.5) * -4;
         statusEl.textContent = '● Tracking';
       } else {
         statusEl.textContent = '○ No face detected';
@@ -154,40 +148,26 @@
 
     const mpCam = new Camera(videoEl, {
       onFrame: async () => { await faceDetector.send({ image: videoEl }); },
-      width: 640, height: 480
+      width: 320, height: 240   // lower res = faster detection = less lag
     });
-
     mpCam.start()
       .then(() => { statusEl.textContent = '○ Looking for face...'; })
       .catch(err => { statusEl.textContent = 'Camera error: ' + err.message; });
 
-    // ── Render loop ─────────────────────────────────────────────────────────
-    const clock = new THREE.Clock();
-
+    // ── Render loop ──────────────────────────────────────────────────────────
     function animate() {
       requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
 
-      // Smooth camera offset (lerp toward target)
-      smoothX += (targetX - smoothX) * 0.08;
-      smoothY += (targetY - smoothY) * 0.08;
-
-      // Parallax: shift camera position while keeping it looking at origin
-      // Larger multiplier = more dramatic effect
-      cam.position.x = smoothX * 5;
-      cam.position.y = 3 + smoothY * 3;
-      cam.lookAt(0, 2, 0);
-
-      // Slow auto-rotate the boxes
-      boxLine.rotation.y  = t * 0.3;
-      innerLine.rotation.y = -t * 0.5;
-      innerLine.rotation.x =  t * 0.2;
+      // Direct assignment — no smoothing, no lag
+      cam.position.x = camX;
+      cam.position.y = camY;
+      cam.position.z = 0;
+      cam.lookAt(0, 0, -40);   // always look toward the back of the box
 
       renderer.render(scene, cam);
     }
     animate();
 
-    // ── Resize ──────────────────────────────────────────────────────────────
     window.addEventListener('resize', () => {
       cam.aspect = innerWidth / innerHeight;
       cam.updateProjectionMatrix();

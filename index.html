@@ -11,94 +11,181 @@
 
     #video {
       position: fixed; top: 12px; right: 12px;
-      width: 130px; border-radius: 8px; opacity: 0.35;
+      width: 120px; border-radius: 8px; opacity: 0.3;
       transform: scaleX(-1); z-index: 10;
     }
     #status {
       position: fixed; top: 12px; left: 12px;
-      color: #0f0; font-size: 12px; z-index: 10;
-      text-shadow: 0 0 8px #0f0;
+      color: #0f0; font-size: 11px; z-index: 10;
+      text-shadow: 0 0 6px #0f0;
     }
 
-    /* ── Settings button ── */
+    /* ── Crosshair ── */
+    #crosshair {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 36px; height: 36px;
+      border: 1.5px solid rgba(0,255,200,0.85);
+      border-radius: 50%;
+      pointer-events: none; z-index: 100;
+      box-shadow: 0 0 10px #00ffcc, inset 0 0 6px rgba(0,255,200,0.2);
+      transition: border-color 0.1s, box-shadow 0.1s;
+    }
+    #crosshair::before {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      width: 4px; height: 4px; background: #00ffcc;
+      border-radius: 50%; transform: translate(-50%, -50%);
+      box-shadow: 0 0 8px #00ffcc;
+    }
+    /* tick marks */
+    #crosshair::after {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      width: 50px; height: 50px;
+      transform: translate(-50%, -50%);
+      background:
+        linear-gradient(#00ffcc,#00ffcc) center top    / 1.5px 7px,
+        linear-gradient(#00ffcc,#00ffcc) center bottom / 1.5px 7px,
+        linear-gradient(#00ffcc,#00ffcc) left   center / 7px 1.5px,
+        linear-gradient(#00ffcc,#00ffcc) right  center / 7px 1.5px;
+      background-repeat: no-repeat;
+      opacity: 0.6;
+    }
+    #crosshair.hit {
+      border-color: #fff;
+      box-shadow: 0 0 20px #fff, 0 0 40px #00ffcc, inset 0 0 10px rgba(255,255,255,0.5);
+    }
+
+    /* ── HUD ── */
+    #hud {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 14px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 50; pointer-events: none;
+    }
+    #score-label { font-size: 10px; color: #555; letter-spacing: 2px; margin-bottom: 2px; }
+    #score { font-size: 28px; color: #00ffcc; text-shadow: 0 0 12px #00ffcc; letter-spacing: 3px; }
+    #lives { font-size: 20px; letter-spacing: 4px; }
+    #combo {
+      position: fixed; top: 80px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 22px; color: #ffcc00;
+      text-shadow: 0 0 12px #ffcc00;
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; z-index: 50;
+    }
+
+    /* ── Flash overlay ── */
+    #flash {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 200;
+      opacity: 0; background: #ff0033;
+      transition: opacity 0.05s;
+    }
+
+    /* ── Game over ── */
+    #gameover {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 300;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px;
+    }
+    #gameover.show { display: flex; }
+    #gameover h1 { font-size: 48px; color: #ff3300; text-shadow: 0 0 30px #ff3300; letter-spacing: 8px; }
+    #gameover .sub { font-size: 13px; color: #888; letter-spacing: 2px; }
+    #final-score { font-size: 36px; color: #00ffcc; text-shadow: 0 0 16px #00ffcc; }
+    #restart-btn {
+      margin-top: 10px; padding: 12px 32px;
+      background: transparent; border: 1.5px solid #00ffcc;
+      color: #00ffcc; font-family: monospace; font-size: 14px;
+      letter-spacing: 3px; cursor: pointer;
+      text-shadow: 0 0 8px #00ffcc; box-shadow: 0 0 12px rgba(0,255,200,0.3);
+      transition: background 0.2s;
+    }
+    #restart-btn:hover { background: rgba(0,255,200,0.12); }
+
+    /* ── Settings ── */
     #settings-btn {
       position: fixed; bottom: 20px; right: 20px;
-      width: 42px; height: 42px; border-radius: 50%;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.18);
-      color: #fff; font-size: 18px; cursor: pointer;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; font-size: 17px; cursor: pointer;
       z-index: 20; display: flex; align-items: center; justify-content: center;
-      backdrop-filter: blur(6px); transition: background 0.2s;
+      backdrop-filter: blur(6px);
     }
-    #settings-btn:hover { background: rgba(255,255,255,0.18); }
-
-    /* ── Settings panel ── */
+    #settings-btn:hover { background: rgba(255,255,255,0.15); }
     #settings {
-      position: fixed; right: -300px; top: 0; bottom: 0;
-      width: 270px; padding: 24px 20px;
-      background: rgba(0,0,0,0.88);
-      border-left: 1px solid rgba(255,255,255,0.09);
+      position: fixed; right: -290px; top: 0; bottom: 0;
+      width: 260px; padding: 22px 18px;
+      background: rgba(0,0,0,0.9);
+      border-left: 1px solid rgba(255,255,255,0.08);
       backdrop-filter: blur(14px);
       z-index: 15; overflow-y: auto;
       transition: right 0.3s cubic-bezier(.4,0,.2,1);
     }
     #settings.open { right: 0; }
-    #settings h2 { font-size: 11px; color: #0f0; margin-bottom: 22px; letter-spacing: 3px; }
-
+    #settings h2 { font-size: 10px; color: #0f0; margin-bottom: 20px; letter-spacing: 3px; }
     .section-title {
-      font-size: 9px; color: #444; letter-spacing: 2px;
-      text-transform: uppercase;
-      border-top: 1px solid #1a1a1a; padding-top: 14px; margin: 18px 0 12px;
+      font-size: 9px; color: #444; letter-spacing: 2px; text-transform: uppercase;
+      border-top: 1px solid #1a1a1a; padding-top: 12px; margin: 16px 0 10px;
     }
-    .setting { margin-bottom: 16px; }
-    .setting label {
-      display: flex; justify-content: space-between;
-      font-size: 11px; color: #888; margin-bottom: 7px;
-    }
-    .setting label span { color: #0f0; min-width: 30px; text-align: right; }
+    .setting { margin-bottom: 14px; }
+    .setting label { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 6px; }
+    .setting label span { color: #0f0; }
     input[type=range] {
       width: 100%; height: 2px; appearance: none;
       background: #222; border-radius: 2px; outline: none; cursor: pointer;
     }
     input[type=range]::-webkit-slider-thumb {
-      appearance: none; width: 13px; height: 13px;
+      appearance: none; width: 12px; height: 12px;
       border-radius: 50%; background: #0f0; cursor: pointer;
-    }
-
-    #hint {
-      position: fixed; bottom: 20px; left: 50%;
-      transform: translateX(-50%);
-      color: #333; font-size: 12px; z-index: 10;
-      pointer-events: none;
     }
   </style>
 </head>
 <body>
   <video id="video" autoplay muted playsinline></video>
   <div id="status">Requesting camera...</div>
-  <div id="hint">Move your head — tilt, shift, lean in/out</div>
-  <button id="settings-btn" title="Settings">⚙</button>
 
+  <div id="crosshair"></div>
+
+  <div id="hud">
+    <div>
+      <div id="score-label">SCORE</div>
+      <div id="score">0</div>
+    </div>
+    <div id="lives">♥ ♥ ♥</div>
+  </div>
+  <div id="combo"></div>
+  <div id="flash"></div>
+
+  <div id="gameover">
+    <h1>GAME OVER</h1>
+    <div class="sub">FINAL SCORE</div>
+    <div id="final-score">0</div>
+    <button id="restart-btn">PLAY AGAIN</button>
+  </div>
+
+  <button id="settings-btn">⚙</button>
   <div id="settings">
     <h2>⚙ SETTINGS</h2>
-
     <div class="section-title">Head Tracking</div>
-
     <div class="setting">
-      <label>Horizontal sensitivity <span id="hSensVal">6</span></label>
-      <input type="range" id="hSens" min="1" max="15" step="0.5" value="6">
+      <label>Horizontal sensitivity <span id="hSensVal">5</span></label>
+      <input type="range" id="hSens" min="1" max="12" step="0.5" value="5">
     </div>
     <div class="setting">
-      <label>Vertical sensitivity <span id="vSensVal">4</span></label>
-      <input type="range" id="vSens" min="1" max="10" step="0.5" value="4">
+      <label>Vertical sensitivity <span id="vSensVal">3.5</span></label>
+      <input type="range" id="vSens" min="1" max="8" step="0.5" value="3.5">
     </div>
     <div class="setting">
-      <label>Depth / zoom <span id="dSensVal">30</span></label>
-      <input type="range" id="dSens" min="0" max="80" step="1" value="30">
+      <label>Smoothing <span id="smoothVal">0.09</span></label>
+      <input type="range" id="smooth" min="0.03" max="0.4" step="0.01" value="0.09">
     </div>
-
     <div class="section-title">Scene</div>
-
     <div class="setting">
       <label>Field of view <span id="fovVal">70</span></label>
       <input type="range" id="fov" min="40" max="110" step="1" value="70">
@@ -107,24 +194,18 @@
       <label>Fog density <span id="fogVal">0.018</span></label>
       <input type="range" id="fog" min="0" max="0.07" step="0.001" value="0.018">
     </div>
-
-    <div class="section-title">Reflective Object</div>
-
+    <div class="section-title">Game</div>
     <div class="setting">
-      <label>Rotation speed <span id="rotVal">0.5</span></label>
-      <input type="range" id="rot" min="0" max="3" step="0.1" value="0.5">
+      <label>Target speed <span id="speedVal">10</span></label>
+      <input type="range" id="speed" min="3" max="30" step="1" value="10">
     </div>
     <div class="setting">
-      <label>Metalness <span id="metVal">1.0</span></label>
-      <input type="range" id="met" min="0" max="1" step="0.05" value="1">
+      <label>Spawn rate (s) <span id="spawnVal">1.6</span></label>
+      <input type="range" id="spawn" min="0.4" max="4" step="0.1" value="1.6">
     </div>
     <div class="setting">
-      <label>Roughness <span id="roughVal">0.0</span></label>
-      <input type="range" id="rough" min="0" max="1" step="0.05" value="0">
-    </div>
-    <div class="setting">
-      <label>Object Z position <span id="objZVal">-20</span></label>
-      <input type="range" id="objZ" min="-70" max="-5" step="1" value="-20">
+      <label>Hit radius <span id="hitRVal">1.0</span></label>
+      <input type="range" id="hitR" min="0.3" max="2.5" step="0.1" value="1.0">
     </div>
   </div>
 
@@ -133,23 +214,21 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3/camera_utils.js" crossorigin="anonymous"></script>
 
   <script>
-    // ── Live settings ─────────────────────────────────────────────────────────
-    const S = { hSens:6, vSens:4, dSens:30, fov:70, fog:0.018, rot:0.5, met:1, rough:0, objZ:-20 };
+    // ── Settings ──────────────────────────────────────────────────────────────
+    const S = { hSens:5, vSens:3.5, smooth:0.09, fov:70, fog:0.018, speed:10, spawn:1.6, hitR:1.0 };
 
     document.getElementById('settings-btn').addEventListener('click', () =>
       document.getElementById('settings').classList.toggle('open')
     );
-
-    function bind(id, key, valId, onChange) {
-      const el = document.getElementById(id);
-      el.addEventListener('input', () => {
-        S[key] = parseFloat(el.value);
-        document.getElementById(valId).textContent = el.value;
-        onChange && onChange(S[key]);
+    function bind(id, key, valId, cb) {
+      document.getElementById(id).addEventListener('input', e => {
+        S[key] = parseFloat(e.target.value);
+        document.getElementById(valId).textContent = e.target.value;
+        cb && cb(S[key]);
       });
     }
 
-    // ── Three.js ──────────────────────────────────────────────────────────────
+    // ── Scene ─────────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x000000, S.fog);
 
@@ -160,16 +239,14 @@
     renderer.setPixelRatio(devicePixelRatio);
     renderer.setSize(innerWidth, innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
     document.body.appendChild(renderer.domElement);
 
-    // ── Box tunnel ────────────────────────────────────────────────────────────
+    // ── Tunnel ────────────────────────────────────────────────────────────────
     const W = 10, H = 7;
-    const depths = Array.from({ length: 18 }, (_, i) => -2 - i * 5);
-
-    const cyanMat  = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.7 });
-    const dimMat   = new THREE.LineBasicMaterial({ color: 0x005544, transparent: true, opacity: 0.4 });
-    const blueMat  = new THREE.LineBasicMaterial({ color: 0x2233ff, transparent: true, opacity: 0.35 });
+    const depths = Array.from({ length: 20 }, (_, i) => -2 - i * 5);
+    const cyanMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.5 });
+    const dimMat  = new THREE.LineBasicMaterial({ color: 0x003a2a, transparent: true, opacity: 0.6 });
+    const blueMat = new THREE.LineBasicMaterial({ color: 0x112266, transparent: true, opacity: 0.4 });
 
     function seg(a, b, mat) {
       return new THREE.Line(
@@ -177,141 +254,142 @@
         mat
       );
     }
-
     function addFrame(z, mat) {
       const hw = W/2, hh = H/2;
       const pts = [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z],[-hw,-hh,z]];
       scene.add(new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))),
-        mat
+        new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))), mat
       ));
       return [[-hw,-hh,z],[hw,-hh,z],[hw,hh,z],[-hw,hh,z]];
     }
-
-    function addFaceDividers(z, mat) {
+    function addDividers(z, mat) {
       const hw = W/2, hh = H/2;
-      for (let i = 1; i < 4; i++) { const x = -hw + (W/4)*i; scene.add(seg([x,-hh,z],[x,hh,z],mat)); }
-      for (let i = 1; i < 3; i++) { const y = -hh + (H/3)*i; scene.add(seg([-hw,y,z],[hw,y,z],mat)); }
+      for (let i = 1; i < 4; i++) { const x = -hw+(W/4)*i; scene.add(seg([x,-hh,z],[x,hh,z],mat)); }
+      for (let i = 1; i < 3; i++) { const y = -hh+(H/3)*i; scene.add(seg([-hw,y,z],[hw,y,z],mat)); }
     }
-
     let prev = null;
     depths.forEach((z, i) => {
       const corners = addFrame(z, i % 3 === 0 ? cyanMat : blueMat);
-      addFaceDividers(z, dimMat);
+      addDividers(z, dimMat);
       if (prev) for (let c = 0; c < 4; c++) scene.add(seg(prev[c], corners[c], dimMat));
       prev = corners;
     });
-
-    // Longitudinal lines along all edges + subdivisions
     const hw = W/2, hh = H/2, zN = -2, zF = depths.at(-1);
-    for (let i = 0; i <= 4; i++) {
-      const x = -hw + (W/4)*i;
-      scene.add(seg([x,-hh,zN],[x,-hh,zF],dimMat));
-      scene.add(seg([x, hh,zN],[x, hh,zF],dimMat));
-    }
-    for (let i = 0; i <= 3; i++) {
-      const y = -hh + (H/3)*i;
-      scene.add(seg([-hw,y,zN],[-hw,y,zF],dimMat));
-      scene.add(seg([ hw,y,zN],[ hw,y,zF],dimMat));
-    }
+    for (let i = 0; i <= 4; i++) { const x = -hw+(W/4)*i; scene.add(seg([x,-hh,zN],[x,-hh,zF],dimMat)); scene.add(seg([x,hh,zN],[x,hh,zF],dimMat)); }
+    for (let i = 0; i <= 3; i++) { const y = -hh+(H/3)*i; scene.add(seg([-hw,y,zN],[-hw,y,zF],dimMat)); scene.add(seg([hw,y,zN],[hw,y,zF],dimMat)); }
 
     // ── Stars ─────────────────────────────────────────────────────────────────
     const starGeo = new THREE.BufferGeometry();
-    const starCount = 400;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-      starPos[i * 3]     = (Math.random() - 0.5) * 60;
-      starPos[i * 3 + 1] = (Math.random() - 0.5) * 40;
-      starPos[i * 3 + 2] = -Math.random() * 90 - 2;
+    const starPos = new Float32Array(500 * 3);
+    for (let i = 0; i < 500; i++) {
+      starPos[i*3]   = (Math.random()-0.5)*55;
+      starPos[i*3+1] = (Math.random()-0.5)*38;
+      starPos[i*3+2] = -Math.random()*95 - 2;
     }
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.07 })));
 
-    // ── Lights ────────────────────────────────────────────────────────────────
-    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    // ── Lighting ──────────────────────────────────────────────────────────────
+    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+    [[0x00ffcc,60,[ 4, 2,-10]], [0x7700ff,60,[-4,-2,-15]], [0xff0055,50,[0,3,-20]]].forEach(([c,i,p]) => {
+      const l = new THREE.PointLight(c, i, 40); l.position.set(...p); scene.add(l);
+    });
 
-    // Static scene lights
-    const staticLights = [
-      { color: 0x00ffcc, intensity: 80, pos: [ 4,  2, -14] },
-      { color: 0x7700ff, intensity: 80, pos: [-4, -2, -26] },
-      { color: 0xff0055, intensity: 60, pos: [ 0,  3, -34] },
+    // ── Game state ────────────────────────────────────────────────────────────
+    const SPAWN_Z  = -85;
+    const KILL_Z   =  2;   // object passes camera → lose life
+
+    const geoPool = [
+      new THREE.BoxGeometry(0.9, 0.9, 0.9),
+      new THREE.TetrahedronGeometry(0.85),
+      new THREE.OctahedronGeometry(0.75),
+      new THREE.IcosahedronGeometry(0.75),
+      new THREE.DodecahedronGeometry(0.7),
     ];
-    staticLights.forEach(({ color, intensity, pos }) => {
-      const l = new THREE.PointLight(color, intensity, 50);
-      l.position.set(...pos);
-      scene.add(l);
-    });
+    const palette = [0xff3300, 0x00ccff, 0xffcc00, 0xff00aa, 0x00ff88, 0xff6600, 0xaa00ff];
 
-    // Orbiting lights close to the object — these are what actually illuminate it
-    const orbitLights = [
-      new THREE.PointLight(0xff3300, 60, 12),
-      new THREE.PointLight(0x00ccff, 60, 12),
-      new THREE.PointLight(0xffee00, 50, 12),
-    ];
-    orbitLights.forEach(l => scene.add(l));
+    let targets   = [];   // { mesh, wire, x, y, speed, value }
+    let dying     = [];   // { mesh, wire, age } — hit objects fading out
+    let score     = 0;
+    let lives     = 3;
+    let combo     = 0;
+    let comboTimer = 0;
+    let lastSpawn  = 0;
+    let gameActive = true;
 
-    // ── Reflective TorusKnot (CubeCamera for live env reflections) ────────────
-    const cubeRT = new THREE.WebGLCubeRenderTarget(256, {
-      generateMipmaps: true,
-      minFilter: THREE.LinearMipmapLinearFilter,
-    });
-    const cubeCamera = new THREE.CubeCamera(0.5, 150, cubeRT);
-    cubeCamera.position.set(0, 0, S.objZ);
-    scene.add(cubeCamera);
+    const scoreEl  = document.getElementById('score');
+    const livesEl  = document.getElementById('lives');
+    const comboEl  = document.getElementById('combo');
+    const flashEl  = document.getElementById('flash');
+    const gameoverEl = document.getElementById('gameover');
+    const finalEl  = document.getElementById('final-score');
+    const crossEl  = document.getElementById('crosshair');
 
-    const sphereMat = new THREE.MeshPhysicalMaterial({
-      metalness:       S.met,
-      roughness:       S.rough,
-      envMap:          cubeRT.texture,
-      envMapIntensity: 1.5,
-      color:           0xff6600,      // warm orange base
-      emissive:        0x220011,      // faint glow so it's never pure black
-      iridescence:     1.0,           // rainbow sheen as it rotates
-      iridescenceIOR:  1.8,
-    });
+    function heartsStr(n) { return Array.from({length:3},(_, i)=> i<n ? '♥' : '♡').join(' '); }
 
-    // TorusKnot — much more complex and interesting than a sphere
-    const sphere = new THREE.Mesh(
-      new THREE.TorusKnotGeometry(1.1, 0.38, 180, 24, 2, 3),
-      sphereMat
-    );
-    sphere.position.set(0, 0, S.objZ);
-    scene.add(sphere);
+    function spawnTarget() {
+      const geo   = geoPool[Math.floor(Math.random() * geoPool.length)];
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      const mat   = new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.4, shininess: 80 });
+      const mesh  = new THREE.Mesh(geo, mat);
 
-    // Orbiting rings
-    function makeTorus(radius, tube, color, opacity) {
-      const m = new THREE.Mesh(
-        new THREE.TorusGeometry(radius, tube, 10, 80),
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
+      // Random position reachable by head movement (camX ~ ±3, camY ~ ±2)
+      const tx = (Math.random()-0.5) * 5.5;
+      const ty = (Math.random()-0.5) * 3.5;
+      mesh.position.set(tx, ty, SPAWN_Z);
+
+      // Glowing wireframe outline
+      const wire = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geo),
+        new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 })
       );
-      m.position.set(0, 0, S.objZ);
-      scene.add(m);
-      return m;
-    }
-    const ring1 = makeTorus(2.5, 0.04, 0x00ffcc, 0.7);
-    const ring2 = makeTorus(3.0, 0.03, 0x7700ff, 0.55);
-    const ring3 = makeTorus(3.5, 0.02, 0xff0055, 0.4);
-    ring2.rotation.x = Math.PI / 3;
-    ring3.rotation.x = Math.PI / 5;
-    ring3.rotation.z = Math.PI / 4;
+      mesh.add(wire);
 
-    // ── Wire up settings ──────────────────────────────────────────────────────
-    bind('hSens', 'hSens', 'hSensVal');
-    bind('vSens', 'vSens', 'vSensVal');
-    bind('dSens', 'dSens', 'dSensVal');
-    bind('fov',   'fov',   'fovVal',   v => { cam.fov = v; cam.updateProjectionMatrix(); });
-    bind('fog',   'fog',   'fogVal',   v => { scene.fog.density = v; });
-    bind('rot',   'rot',   'rotVal');
-    bind('met',   'met',   'metVal',   v => { sphereMat.metalness = v; });
-    bind('rough', 'rough', 'roughVal', v => { sphereMat.roughness = v; });
-    bind('objZ',  'objZ',  'objZVal',  v => {
-      sphere.position.z = v;
-      cubeCamera.position.z = v;
-      [ring1, ring2, ring3].forEach(r => r.position.z = v);
-    });
+      scene.add(mesh);
+      targets.push({ mesh, x: tx, y: ty, speed: S.speed + (score/100)*3 });
+    }
+
+    function flashScreen(color) {
+      flashEl.style.background = color;
+      flashEl.style.opacity = '0.45';
+      setTimeout(() => { flashEl.style.opacity = '0'; }, 80);
+    }
+
+    function showCombo(n) {
+      if (n < 2) return;
+      comboEl.textContent = `${n}x COMBO!`;
+      comboEl.style.opacity = '1';
+      clearTimeout(comboEl._t);
+      comboEl._t = setTimeout(() => { comboEl.style.opacity = '0'; }, 900);
+    }
+
+    function loseLife() {
+      lives = Math.max(0, lives - 1);
+      livesEl.textContent = heartsStr(lives);
+      flashScreen('#ff0033');
+      combo = 0;
+      if (lives === 0) endGame();
+    }
+
+    function endGame() {
+      gameActive = false;
+      finalEl.textContent = score;
+      gameoverEl.classList.add('show');
+    }
+
+    function restart() {
+      targets.forEach(t => scene.remove(t.mesh));
+      dying.forEach(d => scene.remove(d.mesh));
+      targets = []; dying = [];
+      score = 0; lives = 3; combo = 0; lastSpawn = 0;
+      scoreEl.textContent = '0';
+      livesEl.textContent = heartsStr(3);
+      gameoverEl.classList.remove('show');
+      gameActive = true;
+    }
+    document.getElementById('restart-btn').addEventListener('click', restart);
 
     // ── Head tracking ─────────────────────────────────────────────────────────
-    // raw targets (from MediaPipe) and smoothed values (applied to camera)
     let targetX = 0, targetY = 0, targetZ = 0;
     let camX = 0, camY = 0, camZ = 0;
     let refSize = null;
@@ -327,12 +405,10 @@
     faceDetector.onResults(results => {
       if (results.detections.length > 0) {
         const box = results.detections[0].boundingBox;
-        if (refSize === null) refSize = box.width;  // calibrate on first frame
-
+        if (refSize === null) refSize = box.width;
         targetX = (box.xCenter - 0.5) * -S.hSens;
         targetY = (box.yCenter - 0.5) * -S.vSens;
-        targetZ = (box.width - refSize) * -S.dSens;  // lean in → zoom into tunnel
-
+        targetZ = (box.width - refSize) * -25;
         statusEl.textContent = '● Tracking';
       } else {
         statusEl.textContent = '○ No face detected';
@@ -347,52 +423,98 @@
       .then(() => { statusEl.textContent = '○ Looking for face...'; })
       .catch(err => { statusEl.textContent = 'Camera error: ' + err.message; });
 
+    // ── Settings wiring ───────────────────────────────────────────────────────
+    bind('hSens',  'hSens',  'hSensVal');
+    bind('vSens',  'vSens',  'vSensVal');
+    bind('smooth', 'smooth', 'smoothVal');
+    bind('fov',    'fov',    'fovVal',  v => { cam.fov = v; cam.updateProjectionMatrix(); });
+    bind('fog',    'fog',    'fogVal',  v => { scene.fog.density = v; });
+    bind('speed',  'speed',  'speedVal');
+    bind('spawn',  'spawn',  'spawnVal');
+    bind('hitR',   'hitR',   'hitRVal');
+
     // ── Render loop ───────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
-    const SMOOTH = 0.09;   // lerp factor — raise toward 1 for less smoothing
-    let frameCount = 0;
 
     function animate() {
       requestAnimationFrame(animate);
-      const t = clock.getElapsedTime();
+      const dt = clock.getDelta();
+      const t  = clock.elapsedTime;
 
-      // Smooth lerp from current → target (removes jitter while staying responsive)
-      camX += (targetX - camX) * SMOOTH;
-      camY += (targetY - camY) * SMOOTH;
-      camZ += (targetZ - camZ) * SMOOTH;
-
+      // Smooth camera from head tracking
+      camX += (targetX - camX) * S.smooth;
+      camY += (targetY - camY) * S.smooth;
+      camZ += (targetZ - camZ) * S.smooth;
       cam.position.set(camX, camY, camZ);
       cam.lookAt(0, 0, -999);
 
-      // Spin the knot
-      sphere.rotation.x = t * S.rot * 0.5;
-      sphere.rotation.y = t * S.rot * 0.8;
+      if (gameActive) {
+        // Spawn
+        lastSpawn += dt;
+        if (lastSpawn >= S.spawn) {
+          spawnTarget();
+          lastSpawn = 0;
+        }
 
-      // Spin rings
-      ring1.rotation.z =  t * S.rot * 0.6;
-      ring1.rotation.x =  t * S.rot * 0.3;
-      ring2.rotation.y = -t * S.rot * 0.8;
-      ring2.rotation.z =  t * S.rot * 0.2;
-      ring3.rotation.x =  t * S.rot * 0.6;
-      ring3.rotation.y = -t * S.rot * 0.4;
+        // Combo timer
+        comboTimer -= dt;
+        if (comboTimer < 0) combo = 0;
 
-      // Orbit the close lights around the object so it's always well-lit and colorful
-      const oz = S.objZ;
-      orbitLights[0].position.set(Math.cos(t * 1.1) * 3,       Math.sin(t * 0.7) * 2,  oz + Math.sin(t * 1.1) * 2);
-      orbitLights[1].position.set(Math.cos(t * 0.9 + 2.1) * 3, Math.sin(t * 1.3) * 2,  oz + Math.sin(t * 0.9) * 2);
-      orbitLights[2].position.set(Math.cos(t * 1.3 + 4.2) * 3, Math.sin(t * 0.5) * 2,  oz + Math.sin(t * 1.3) * 2);
+        // Move targets + hit detection
+        for (let i = targets.length - 1; i >= 0; i--) {
+          const tgt = targets[i];
+          tgt.mesh.position.z += tgt.speed * dt;
+          tgt.mesh.rotation.x += dt * 0.9;
+          tgt.mesh.rotation.y += dt * 1.1;
 
-      // Gentle float
-      const bob = Math.sin(t * 0.9) * 0.15;
-      sphere.position.y = bob;
-      cubeCamera.position.y = bob;
+          // Pulse brightness as it approaches
+          const proximity = 1 - Math.min(1, Math.abs(tgt.mesh.position.z) / 60);
+          tgt.mesh.material.emissiveIntensity = 0.3 + proximity * 0.8;
 
-      // Update reflections every 3rd frame — avoids per-frame sphere hide/show flicker
-      frameCount++;
-      if (frameCount % 3 === 0) {
-        sphere.visible = false;
-        cubeCamera.update(renderer, scene);
-        sphere.visible = true;
+          // Hit detection: crosshair (camX, camY) vs target world XY
+          const dx = camX - tgt.x;
+          const dy = camY - tgt.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+
+          if (dist < S.hitR) {
+            // HIT
+            combo++;
+            comboTimer = 1.5;
+            const pts = 10 * combo;
+            score += pts;
+            scoreEl.textContent = score;
+            showCombo(combo);
+            flashScreen('#00ffcc');
+
+            // Crosshair flash
+            crossEl.classList.add('hit');
+            setTimeout(() => crossEl.classList.remove('hit'), 150);
+
+            // Move to dying list (scale up + fade)
+            dying.push({ mesh: tgt.mesh, age: 0 });
+            targets.splice(i, 1);
+
+          } else if (tgt.mesh.position.z > KILL_Z) {
+            // MISSED — passed the camera
+            scene.remove(tgt.mesh);
+            targets.splice(i, 1);
+            loseLife();
+          }
+        }
+
+        // Animate dying objects
+        for (let i = dying.length - 1; i >= 0; i--) {
+          const d = dying[i];
+          d.age += dt;
+          const s = 1 + d.age * 6;
+          d.mesh.scale.set(s, s, s);
+          d.mesh.material.opacity = Math.max(0, 1 - d.age * 4);
+          d.mesh.material.transparent = true;
+          if (d.age > 0.35) {
+            scene.remove(d.mesh);
+            dying.splice(i, 1);
+          }
+        }
       }
 
       renderer.render(scene, cam);

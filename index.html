@@ -281,6 +281,8 @@
     });
 
     // ── Head tracking ─────────────────────────────────────────────────────────
+    // raw targets (from MediaPipe) and smoothed values (applied to camera)
+    let targetX = 0, targetY = 0, targetZ = 0;
     let camX = 0, camY = 0, camZ = 0;
     let refSize = null;
 
@@ -297,9 +299,9 @@
         const box = results.detections[0].boundingBox;
         if (refSize === null) refSize = box.width;  // calibrate on first frame
 
-        camX = (box.xCenter - 0.5) * -S.hSens;
-        camY = (box.yCenter - 0.5) * -S.vSens;
-        camZ = (box.width - refSize) * -S.dSens;    // lean in → zoom into tunnel
+        targetX = (box.xCenter - 0.5) * -S.hSens;
+        targetY = (box.yCenter - 0.5) * -S.vSens;
+        targetZ = (box.width - refSize) * -S.dSens;  // lean in → zoom into tunnel
 
         statusEl.textContent = '● Tracking';
       } else {
@@ -317,12 +319,18 @@
 
     // ── Render loop ───────────────────────────────────────────────────────────
     const clock = new THREE.Clock();
+    const SMOOTH = 0.18;   // lerp factor — raise toward 1 for less smoothing
+    let frameCount = 0;
 
     function animate() {
       requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
 
-      // Camera: direct head position, no smoothing
+      // Smooth lerp from current → target (removes jitter while staying responsive)
+      camX += (targetX - camX) * SMOOTH;
+      camY += (targetY - camY) * SMOOTH;
+      camZ += (targetZ - camZ) * SMOOTH;
+
       cam.position.set(camX, camY, camZ);
       cam.lookAt(0, 0, -999);
 
@@ -339,10 +347,13 @@
       sphere.position.y = bob;
       cubeCamera.position.y = bob;
 
-      // Update reflections (hide sphere to avoid self-reflection artifact)
-      sphere.visible = false;
-      cubeCamera.update(renderer, scene);
-      sphere.visible = true;
+      // Update reflections every 3rd frame — avoids per-frame sphere hide/show flicker
+      frameCount++;
+      if (frameCount % 3 === 0) {
+        sphere.visible = false;
+        cubeCamera.update(renderer, scene);
+        sphere.visible = true;
+      }
 
       renderer.render(scene, cam);
     }
